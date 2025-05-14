@@ -1,30 +1,43 @@
-# Chrome extension
+# R10.net Bildirim Chrome Eklentisi
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+Bu Chrome eklentisi, R10.net sitesindeki bildirimleri tarayıcı üzerinden takip etmenizi sağlar.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/polatyusuf1331-gmailcoms-projects/v0-chrome-extension)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/5kf3fOGLx6q)
+## Bilinen Sorunlar ve Çözümleri
 
-## Overview
+### 1. DOMParser Hatası
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+**Sorun:** Background script'te DOMParser kullanılamaz çünkü Service Worker'larda DOM API'leri mevcut değildir.
 
-## Deployment
+**Çözüm:** XML parsing işlemi için regex tabanlı bir çözüm uygulandı.
 
-Your project is live at:
+### 2. Cloudflare Erişim Engeli
 
-**[https://vercel.com/polatyusuf1331-gmailcoms-projects/v0-chrome-extension](https://vercel.com/polatyusuf1331-gmailcoms-projects/v0-chrome-extension)**
+**Sorun:** R10.net, bazı IP adreslerinden gelen otomatik istekleri engelleyebilir (Error 1005).
 
-## Build your app
+**Çözüm:**
+- User-Agent header'ı eklendi
+- Engelleme tespit edildiğinde, bir süre (1 saat) bekleme mekanizması eklendi
+- Engelleme durumunda kullanıcıya bilgi verilmesi sağlandı
 
-Continue building your app on:
+### 3. Mesaj İletişim Hatası
 
-**[https://v0.dev/chat/projects/5kf3fOGLx6q](https://v0.dev/chat/projects/5kf3fOGLx6q)**
+**Sorun:** Popup ve background script arasındaki iletişimde sorun yaşanıyor.
 
-## How It Works
+**Çözüm:** Message listener düzgün şekilde yapılandırıldı ve asenkron yanıt için `return true` eklendi.
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+## Kurulum
+
+1. Chrome'da `chrome://extensions/` adresine gidin
+2. "Geliştirici modu"nu açın
+3. "Paketlenmemiş öğe yükle" butonuna tıklayın
+4. Bu klasörü seçin
+
+## Kullanım
+
+- Eklenti simgesine tıklayarak bildirimleri görüntüleyebilirsiniz
+- Bildirimler otomatik olarak her 5 dakikada bir kontrol edilir
+- Yeni bildirim geldiğinde tarayıcı bildirimi gösterilir
+
+## Özelleştirme
+
+- `background.js` dosyasındaki `CHECK_INTERVAL_MINUTES` değişkenini değiştirerek bildirim kontrol sıklığını ayarlayabilirsiniz

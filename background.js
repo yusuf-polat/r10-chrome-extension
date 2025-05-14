@@ -1,47 +1,67 @@
-// Bildirim kontrolü için aralık (dakika cinsinden)
-const CHECK_INTERVAL_MINUTES = 5
+// Bildirim kontrolü ve token yenileme için aralıklar
+const CHECK_INTERVAL_SECONDS = 3 // 3 saniyede bir bildirim kontrolü
+const TOKEN_REFRESH_MINUTES = 1 // 1 dakikada bir token yenileme
 let securityToken = ""
+let isBlocked = false
+let lastTokenRefresh = 0
 
 // Eklenti yüklendiğinde çalışacak
 chrome.runtime.onInstalled.addListener(() => {
   console.log("R10.net Bildirim Eklentisi yüklendi")
 
-  // Düzenli kontrol için alarm kur
+  // Bildirim kontrolü için alarm kur (3 saniyede bir)
   chrome.alarms.create("checkNotifications", {
-    periodInMinutes: CHECK_INTERVAL_MINUTES,
+    periodInMinutes: CHECK_INTERVAL_SECONDS / 60,
   })
 
-  // İlk kontrol
-  checkForNotifications()
+  // Token yenileme için alarm kur (1 dakikada bir)
+  chrome.alarms.create("refreshToken", {
+    periodInMinutes: TOKEN_REFRESH_MINUTES,
+  })
+
+  // İlk token alımı
+  refreshSecurityToken()
 })
 
-// Alarm tetiklendiğinde bildirimleri kontrol et
+// Alarm tetiklendiğinde yapılacak işlemler
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkNotifications") {
     checkForNotifications()
+  } else if (alarm.name === "refreshToken") {
+    refreshSecurityToken()
   }
 })
 
-// Bildirimleri kontrol et
-async function checkForNotifications() {
+// Security token'ı yenile
+async function refreshSecurityToken() {
   try {
-    // Önce security token'ı al
-    await getSecurityToken()
-
-    // Token alındıysa bildirimleri kontrol et
-    if (securityToken) {
-      const notifications = await fetchNotifications()
-      processNotifications(notifications)
+    // Eğer daha önce engellendiysek, tekrar denemeden önce bir süre bekleyelim
+    if (isBlocked) {
+      const lastBlockTime = await chrome.storage.local.get("lastBlockTime")
+      const now = Date.now()
+      // 1 saat geçmediyse tekrar deneme
+      if (lastBlockTime.lastBlockTime && now - lastBlockTime.lastBlockTime < 3600000) {
+        console.log("Site erişimi engellendi. Daha sonra tekrar denenecek.")
+        return
+      }
     }
-  } catch (error) {
-    console.error("Bildirim kontrolü sırasında hata:", error)
-  }
-}
 
-// Security token'ı al
-async function getSecurityToken() {
-  try {
-    const response = await fetch("https://www.r10.net/")
+    const response = await fetch("https://www.r10.net/", {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      },
+    })
+
+    if (!response.ok) {
+      if (response.status === 403 || response.status === 1005) {
+        isBlocked = true
+        await chrome.storage.local.set({ lastBlockTime: Date.now() })
+        throw new Error("Access denied by Cloudflare")
+      }
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
     const html = await response.text()
 
     // SECURITYTOKEN'ı HTML içinden çıkar
@@ -49,7 +69,15 @@ async function getSecurityToken() {
 
     if (tokenMatch && tokenMatch[1]) {
       securityToken = tokenMatch[1]
-      console.log("Security token alındı:", securityToken)
+      lastTokenRefresh = Date.now()
+      console.log("Security token yenilendi:", securityToken)
+
+      // Token'ı storage'a kaydet
+      await chrome.storage.local.set({
+        securityToken: securityToken,
+        lastTokenRefresh: lastTokenRefresh,
+      })
+
       return securityToken
     } else {
       console.error("Security token bulunamadı")
@@ -58,6 +86,36 @@ async function getSecurityToken() {
   } catch (error) {
     console.error("Security token alınırken hata:", error)
     return null
+  }
+}
+
+// Bildirimleri kontrol et
+async function checkForNotifications() {
+  try {
+    // Token yoksa veya çok eskiyse yenile
+    if (!securityToken) {
+      // Storage'dan token'ı kontrol et
+      const data = await chrome.storage.local.get(["securityToken", "lastTokenRefresh"])
+      if (data.securityToken) {
+        securityToken = data.securityToken
+        lastTokenRefresh = data.lastTokenRefresh || 0
+        console.log("Token storage'dan alındı:", securityToken)
+      } else {
+        // Token hiç yoksa yenile
+        await refreshSecurityToken()
+      }
+    }
+
+    // Token alındıysa bildirimleri kontrol et
+    if (securityToken) {
+      const notifications = await fetchNotifications()
+      if (notifications) {
+        isBlocked = false
+        processNotifications(notifications)
+      }
+    }
+  } catch (error) {
+    console.error("Bildirim kontrolü sırasında hata:", error)
   }
 }
 
@@ -72,7 +130,20 @@ async function fetchNotifications() {
     const response = await fetch("https://www.r10.net/ajax.php?do=bildirimlerx&t=1", {
       method: "POST",
       body: formData,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      },
     })
+
+    if (!response.ok) {
+      if (response.status === 403 || response.status === 1005) {
+        isBlocked = true
+        await chrome.storage.local.set({ lastBlockTime: Date.now() })
+        throw new Error("Access denied by Cloudflare")
+      }
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
 
     const xmlText = await response.text()
     return parseNotificationsXml(xmlText)
@@ -82,36 +153,47 @@ async function fetchNotifications() {
   }
 }
 
-// XML bildirimleri parse et
+// Simple XML parsing without DOMParser (which isn't available in service workers)
 function parseNotificationsXml(xmlText) {
-  const parser = new DOMParser()
-  const xmlDoc = parser.parseFromString(xmlText, "text/xml")
-
-  // Temel bilgileri çıkar
+  // Simple XML parsing without DOMParser (which isn't available in service workers)
   const result = {
-    ozelMesajKullanim: getXmlNodeValue(xmlDoc, "ozelMesajKullanim"),
-    ozelMesajSayi: getXmlNodeValue(xmlDoc, "ozelMesajSayi"),
-    okunmamisOzelMesajSayi: getXmlNodeValue(xmlDoc, "okunmamisOzelMesajSayi"),
-    arkadaslikIstekSayi: getXmlNodeValue(xmlDoc, "arkadaslikIstekSayi"),
-    bildirimSayi: getXmlNodeValue(xmlDoc, "bildirimSayi"),
-    okunmamisBildirimSayi: getXmlNodeValue(xmlDoc, "okunmamisBildirimSayi"),
-    ozelMesajlar: getXmlNodeCData(xmlDoc, "ozelMesajlar"),
-    bildirimler: getXmlNodeCData(xmlDoc, "bildirimler"),
+    ozelMesajKullanim: 0,
+    ozelMesajSayi: 0,
+    okunmamisOzelMesajSayi: 0,
+    arkadaslikIstekSayi: 0,
+    bildirimSayi: 0,
+    okunmamisBildirimSayi: 0,
+    ozelMesajlar: "",
+    bildirimler: "",
   }
 
+  // Extract values using regex
+  const getTagContent = (xml, tagName) => {
+    const regex = new RegExp(`<${tagName}>([^<]*)</${tagName}>`, "i")
+    const match = xml.match(regex)
+    return match ? match[1] : ""
+  }
+
+  // Extract CDATA content
+  const getCDataContent = (xml, tagName) => {
+    const regex = new RegExp(`<${tagName}><!\\[CDATA\\[(.*?)\\]\\]></${tagName}>`, "s")
+    const match = xml.match(regex)
+    return match ? match[1] : ""
+  }
+
+  // Extract numeric values
+  result.ozelMesajKullanim = Number.parseInt(getTagContent(xmlText, "ozelMesajKullanim")) || 0
+  result.ozelMesajSayi = Number.parseInt(getTagContent(xmlText, "ozelMesajSayi")) || 0
+  result.okunmamisOzelMesajSayi = Number.parseInt(getTagContent(xmlText, "okunmamisOzelMesajSayi")) || 0
+  result.arkadaslikIstekSayi = Number.parseInt(getTagContent(xmlText, "arkadaslikIstekSayi")) || 0
+  result.bildirimSayi = Number.parseInt(getTagContent(xmlText, "bildirimSayi")) || 0
+  result.okunmamisBildirimSayi = Number.parseInt(getTagContent(xmlText, "okunmamisBildirimSayi")) || 0
+
+  // Extract CDATA sections
+  result.ozelMesajlar = getCDataContent(xmlText, "ozelMesajlar")
+  result.bildirimler = getCDataContent(xmlText, "bildirimler")
+
   return result
-}
-
-// XML node değerini al
-function getXmlNodeValue(xmlDoc, nodeName) {
-  const node = xmlDoc.getElementsByTagName(nodeName)[0]
-  return node ? Number.parseInt(node.textContent) || 0 : 0
-}
-
-// XML CDATA içeriğini al
-function getXmlNodeCData(xmlDoc, nodeName) {
-  const node = xmlDoc.getElementsByTagName(nodeName)[0]
-  return node ? node.textContent : ""
 }
 
 // Bildirimleri işle ve göster
@@ -178,3 +260,20 @@ function updateBadge(data) {
     chrome.action.setBadgeText({ text: "" })
   }
 }
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "checkNotifications") {
+    checkForNotifications()
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error.message }))
+    return true // Indicates async response
+  } else if (message.action === "getTokenInfo") {
+    sendResponse({
+      token: securityToken,
+      lastRefresh: lastTokenRefresh,
+      nextRefresh: lastTokenRefresh + TOKEN_REFRESH_MINUTES * 60 * 1000,
+    })
+    return true
+  }
+})

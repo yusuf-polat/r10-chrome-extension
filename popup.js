@@ -10,6 +10,7 @@ const lastCheckTime = document.getElementById("lastCheckTime")
 const tabAll = document.getElementById("tabAll")
 const tabPm = document.getElementById("tabPm")
 const tabNotify = document.getElementById("tabNotify")
+const tokenStatus = document.getElementById("tokenStatus")
 
 // Aktif sekme
 let activeTab = "all"
@@ -52,6 +53,24 @@ async function loadNotifications() {
   } catch (error) {
     console.error("Bildirimler yüklenirken hata:", error)
   } finally {
+    // Token bilgisini al
+    chrome.runtime.sendMessage({ action: "getTokenInfo" }, (response) => {
+      if (response) {
+        const now = Date.now()
+        const nextRefresh = new Date(response.nextRefresh)
+        const timeUntilRefresh = Math.max(0, Math.floor((response.nextRefresh - now) / 1000))
+
+        if (response.token) {
+          tokenStatus.textContent = `Aktif (${timeUntilRefresh} sn sonra yenilenecek)`
+          tokenStatus.classList.add("text-green-600")
+          tokenStatus.classList.remove("text-red-600")
+        } else {
+          tokenStatus.textContent = "Token alınamadı"
+          tokenStatus.classList.add("text-red-600")
+          tokenStatus.classList.remove("text-green-600")
+        }
+      }
+    })
     showLoading(false)
   }
 }
@@ -62,7 +81,7 @@ async function refreshNotifications() {
 
   try {
     // Background script'e bildirim kontrolü mesajı gönder
-    chrome.runtime.sendMessage({ action: "checkNotifications" }, async () => {
+    chrome.runtime.sendMessage({ action: "checkNotifications" }, async (response) => {
       // Storage'dan güncel verileri al
       const data = await chrome.storage.local.get(["lastNotificationData", "lastCheckTime"])
 
