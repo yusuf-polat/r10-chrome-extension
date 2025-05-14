@@ -1,15 +1,18 @@
 // Bildirim kontrolü ve token yenileme için aralıklar
-const CHECK_INTERVAL_SECONDS = 3 // 3 saniyede bir bildirim kontrolü
+const CHECK_INTERVAL_SECONDS = 20 // 20 saniyede bir bildirim kontrolü
 const TOKEN_REFRESH_MINUTES = 1 // 1 dakikada bir token yenileme
 let securityToken = ""
 let isBlocked = false
 let lastTokenRefresh = 0
+let cookies = ""
+const userAgent = navigator.userAgent // Tarayıcının user-agent'ını al
 
 // Eklenti yüklendiğinde çalışacak
 chrome.runtime.onInstalled.addListener(() => {
   console.log("R10.net Bildirim Eklentisi yüklendi")
+  console.log("Kullanılan User-Agent:", userAgent)
 
-  // Bildirim kontrolü için alarm kur (3 saniyede bir)
+  // Bildirim kontrolü için alarm kur (20 saniyede bir)
   chrome.alarms.create("checkNotifications", {
     periodInMinutes: CHECK_INTERVAL_SECONDS / 60,
   })
@@ -32,6 +35,27 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 })
 
+// Cookie'leri al
+async function getCookies() {
+  try {
+    // Chrome extension API kullanarak r10.net için tüm cookie'leri al
+    const r10Cookies = await chrome.cookies.getAll({ domain: "r10.net" })
+
+    if (r10Cookies && r10Cookies.length > 0) {
+      // Cookie'leri string formatına dönüştür
+      cookies = r10Cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ")
+      console.log("Cookies alındı")
+      return cookies
+    } else {
+      console.error("R10.net için cookie bulunamadı")
+      return ""
+    }
+  } catch (error) {
+    console.error("Cookie'ler alınırken hata:", error)
+    return ""
+  }
+}
+
 // Security token'ı yenile
 async function refreshSecurityToken() {
   try {
@@ -46,10 +70,23 @@ async function refreshSecurityToken() {
       }
     }
 
+    // Önce cookie'leri al
+    await getCookies()
+
     const response = await fetch("https://www.r10.net/", {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "User-Agent": userAgent,
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": "tr",
+        "Sec-Ch-Ua": '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        Cookie: cookies,
       },
     })
 
@@ -106,8 +143,13 @@ async function checkForNotifications() {
       }
     }
 
+    // Cookie'leri kontrol et
+    if (!cookies) {
+      await getCookies()
+    }
+
     // Token alındıysa bildirimleri kontrol et
-    if (securityToken) {
+    if (securityToken && cookies) {
       const notifications = await fetchNotifications()
       if (notifications) {
         isBlocked = false
@@ -122,18 +164,31 @@ async function checkForNotifications() {
 // Bildirimleri getir
 async function fetchNotifications() {
   try {
-    const formData = new FormData()
+    // URL-encoded form data oluştur
+    const formData = new URLSearchParams()
     formData.append("do", "bildirimlerx")
     formData.append("detail", "1")
     formData.append("securitytoken", securityToken)
 
     const response = await fetch("https://www.r10.net/ajax.php?do=bildirimlerx&t=1", {
       method: "POST",
-      body: formData,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        Accept: "*/*",
+        "Accept-Language": "tr",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        Origin: "https://www.r10.net",
+        Referer: "https://www.r10.net/",
+        "Sec-Ch-Ua": '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "User-Agent": userAgent,
+        "X-Requested-With": "XMLHttpRequest",
+        Cookie: cookies,
       },
+      body: formData.toString(),
     })
 
     if (!response.ok) {
@@ -145,13 +200,22 @@ async function fetchNotifications() {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const xmlText = await response.text()
-    return parseNotificationsXml(xmlText)
+    // Get the response as ArrayBuffer
+    const buffer = await response.arrayBuffer()
+    // Convert from Windows-1254 to UTF-8
+    const decoder = new TextDecoder('windows-1254')
+    const xmlText = decoder.decode(buffer)
+    
+    // Remove the windows-1254 encoding declaration and replace with UTF-8
+    const xmlTextFixed = xmlText.replace('encoding="windows-1254"', 'encoding="UTF-8"')
+    
+    return parseNotificationsXml(xmlTextFixed)
   } catch (error) {
     console.error("Bildirimler alınırken hata:", error)
     return null
   }
 }
+
 
 // Simple XML parsing without DOMParser (which isn't available in service workers)
 function parseNotificationsXml(xmlText) {
@@ -273,6 +337,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       token: securityToken,
       lastRefresh: lastTokenRefresh,
       nextRefresh: lastTokenRefresh + TOKEN_REFRESH_MINUTES * 60 * 1000,
+      userAgent: userAgent,
     })
     return true
   }

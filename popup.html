@@ -4,73 +4,122 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>R10.net Bildirimleri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    body {
-      width: 350px;
-      max-height: 500px;
-      overflow-y: auto;
-    }
-    .notification-item {
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .notification-item:last-child {
-      border-bottom: none;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-50">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 dark:text-white">
   <div class="container mx-auto p-4">
-    <header class="flex justify-between items-center mb-4">
-      <h1 class="text-xl font-bold text-gray-800">R10.net Bildirimleri</h1>
-      <button id="refreshBtn" class="p-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      </button>
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-6">
+      <div class="flex items-center">
+        <div>
+          <h1 class="text-xl font-bold text-gray-800 dark:text-white">R10.net</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Bildirim Merkezi</p>
+        </div>
+      </div>
+      <div class="flex items-center">
+        <button id="themeToggle" class="p-2 mr-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+        <button id="refreshBtn" class="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
     </header>
     
-    <div class="stats grid grid-cols-3 gap-2 mb-4">
-      <div class="stat bg-white p-2 rounded shadow">
-        <div class="text-sm text-gray-600">Özel Mesaj</div>
-        <div id="pmCount" class="text-xl font-bold text-blue-600">0</div>
+    <!-- Stats Cards -->
+    <div class="stats grid grid-cols-3 gap-3 mb-6">
+      <div class="stat bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600 dark:text-gray-400">Özel Mesaj</div>
+          <div class="w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+        </div>
+        <div id="pmCount" class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">0</div>
       </div>
-      <div class="stat bg-white p-2 rounded shadow">
-        <div class="text-sm text-gray-600">Arkadaşlık</div>
-        <div id="friendCount" class="text-xl font-bold text-green-600">0</div>
+      <div class="stat bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600 dark:text-gray-400">Arkadaşlık</div>
+          <div class="w-8 h-8 flex items-center justify-center bg-green-100 dark:bg-green-900 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+        </div>
+        <div id="friendCount" class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">0</div>
       </div>
-      <div class="stat bg-white p-2 rounded shadow">
-        <div class="text-sm text-gray-600">Bildirim</div>
-        <div id="notifyCount" class="text-xl font-bold text-red-600">0</div>
+      <div class="stat bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600 dark:text-gray-400">Bildirim</div>
+          <div class="w-8 h-8 flex items-center justify-center bg-red-100 dark:bg-red-900 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+        </div>
+        <div id="notifyCount" class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">0</div>
       </div>
     </div>
     
-    <div class="tabs flex mb-4 border-b">
-      <button id="tabAll" class="tab-btn py-2 px-4 font-medium text-blue-600 border-b-2 border-blue-600">Tümü</button>
-      <button id="tabPm" class="tab-btn py-2 px-4 font-medium text-gray-600">Özel Mesajlar</button>
-      <button id="tabNotify" class="tab-btn py-2 px-4 font-medium text-gray-600">Bildirimler</button>
+    <!-- Tabs -->
+    <div class="tabs flex mb-4 border-b border-gray-200 dark:border-gray-700">
+      <button id="tabAll" class="tab-btn py-2 px-4 font-medium text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400">Tümü</button>
+      <button id="tabPm" class="tab-btn py-2 px-4 font-medium text-gray-600 dark:text-gray-400">Özel Mesajlar</button>
+      <button id="tabNotify" class="tab-btn py-2 px-4 font-medium text-gray-600 dark:text-gray-400">Bildirimler</button>
     </div>
     
-    <div id="loadingIndicator" class="text-center py-4">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-      <p class="mt-2 text-gray-600">Bildirimler yükleniyor...</p>
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="text-center py-8">
+      <div class="loader">
+        <div class="spinner"></div>
+      </div>
+      <p class="mt-4 text-gray-600 dark:text-gray-400">Bildirimler yükleniyor...</p>
     </div>
     
-    <div id="notificationList" class="bg-white rounded shadow divide-y divide-gray-200">
+    <!-- Notification List -->
+    <div id="notificationList" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100 dark:divide-gray-700 border border-gray-100 dark:border-gray-700">
       <!-- Bildirimler buraya yüklenecek -->
     </div>
     
-    <div id="emptyState" class="hidden text-center py-8">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-      </svg>
-      <p class="mt-2 text-gray-600">Hiç bildiriminiz yok.</p>
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden text-center py-10 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div class="empty-state-icon mx-auto mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300">Hiç bildiriminiz yok</h3>
+      <p class="mt-2 text-gray-500 dark:text-gray-400">Yeni bildirimler geldiğinde burada görünecek.</p>
     </div>
     
-    <footer class="mt-4 text-center text-xs text-gray-500">
-      <p>Son kontrol: <span id="lastCheckTime">-</span></p>
-  <p class="mt-1">Token durumu: <span id="tokenStatus">-</span></p>
-</footer>
+    <!-- Footer -->
+    <footer class="mt-6 text-center text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div class="flex flex-col space-y-2">
+        <div class="flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p>Son kontrol: <span id="lastCheckTime" class="font-medium">-</span></p>
+        </div>
+        <div class="flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <p>Token durumu: <span id="tokenStatus" class="font-medium">-</span></p>
+        </div>
+        <div id="userAgentInfo" class="text-xs truncate max-w-full"></div>
+      </div>
+    </footer>
   </div>
   
   <script src="popup.js"></script>
