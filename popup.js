@@ -235,6 +235,13 @@ function renderNotifications(data) {
 
   if (activeTab === "all") {
     itemsToShow = [...pmItems, ...notifyItems]
+    
+    // Tarihleri parse edip sıralama yap
+    itemsToShow.sort((a, b) => {
+      const dateA = parseTurkishDate(a.date)
+      const dateB = parseTurkishDate(b.date)
+      return dateB - dateA // Yeniden eskiye sırala
+    })
   } else if (activeTab === "pm") {
     itemsToShow = pmItems
   } else if (activeTab === "notify") {
@@ -298,6 +305,43 @@ function renderNotifications(data) {
 
     notificationList.appendChild(element)
   })
+}
+
+// Türkçe tarih formatını parse etmek için yardımcı fonksiyon
+function parseTurkishDate(dateStr) {
+  try {
+    // "Bugün" ve "Dün" kontrolü
+    if (dateStr.includes('Bugün')) {
+      const today = new Date()
+      const time = dateStr.split(' ')[1].split(':')
+      today.setHours(parseInt(time[0]), parseInt(time[1]), 0)
+      return today
+    }
+    
+    if (dateStr.includes('Dün')) {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const time = dateStr.split(' ')[1].split(':')
+      yesterday.setHours(parseInt(time[0]), parseInt(time[1]), 0)
+      return yesterday
+    }
+
+    // Normal tarih formatı (örn: "15-05-2025 14:30")
+    const parts = dateStr.trim().split(' ')
+    const dateParts = parts[0].split('-')
+    const timeParts = parts[1].split(':')
+    
+    return new Date(
+      parseInt(dateParts[2]), // yıl
+      parseInt(dateParts[1]) - 1, // ay (0-11)
+      parseInt(dateParts[0]), // gün
+      parseInt(timeParts[0]), // saat
+      parseInt(timeParts[1]) // dakika
+    )
+  } catch (error) {
+    console.error('Tarih parse edilirken hata:', error)
+    return new Date(0) // Hata durumunda en eski tarih
+  }
 }
 
 // Sekme değiştir
