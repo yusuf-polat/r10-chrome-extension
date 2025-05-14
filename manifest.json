@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "R10 Bildirim Asistanı",
-  "version": "1.0",
+  "version": "1.1",
   "description": "R10.net platformundaki özel mesajlarınızı, bildirimlerinizi ve arkadaşlık isteklerinizi gerçek zamanlı takip edin!",
   "permissions": ["notifications", "storage", "alarms", "cookies"],
   "host_permissions": ["https://www.r10.net/*"],

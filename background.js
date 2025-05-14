@@ -264,6 +264,14 @@ function parseNotificationsXml(xmlText) {
 async function processNotifications(data) {
   if (!data) return
 
+  // Fix links in notifications and private messages
+  if (data.bildirimler) {
+    data.bildirimler = fixNotificationLinks(data.bildirimler)
+  }
+  if (data.ozelMesajlar) {
+    data.ozelMesajlar = fixNotificationLinks(data.ozelMesajlar)
+  }
+
   // Önceki bildirim sayılarını al
   const prevData = await chrome.storage.local.get([
     "okunmamisOzelMesajSayi",
@@ -300,6 +308,31 @@ async function processNotifications(data) {
 
   // Badge'i güncelle
   updateBadge(data)
+}
+
+// Add this new helper function after processNotifications
+function fixNotificationLinks(html) {
+  if (!html) return html
+
+  // Regular expression to find links
+  const linkRegex = /href="([^"]+)"/g
+  
+  return html.replace(linkRegex, (match, url) => {
+    // Skip if already has full URL
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return match
+    }
+    
+    // Skip if already starts with r10.net
+    if (url.startsWith('r10.net') || url.startsWith('www.r10.net')) {
+      return match
+    }
+    
+    // Add base URL to relative links
+    const baseUrl = 'https://www.r10.net/'
+    const fixedUrl = url.startsWith('/') ? baseUrl + url.slice(1) : baseUrl + url
+    return `href="${fixedUrl}"`
+  })
 }
 
 // Tarayıcı bildirimi göster
