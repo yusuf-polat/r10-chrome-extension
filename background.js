@@ -337,17 +337,26 @@ function fixNotificationLinks(html) {
 
 // Tarayıcı bildirimi göster
 function showNotification(title, message) {
-  // Play notification sound
-  const audio = new Audio(chrome.runtime.getURL('notification.mp3'));
-  audio.play().catch(error => console.log('Error playing sound:', error));
+  // Create an <audio> element in the background page
+  fetch(chrome.runtime.getURL('notification.mp3'))
+    .then(response => response.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const audio = document.createElement('audio');
+      audio.src = url;
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.play().catch(error => console.log('Error playing sound:', error));
+    })
+    .catch(error => console.log('Error loading sound:', error));
 
   chrome.notifications.create({
-    type: "basic",
+    type: "basic", 
     iconUrl: "images/icon128.png",
     title: title,
     message: message,
     priority: 2,
-  })
+    requireInteraction: true,
+  });
 }
 
 // Eklenti badge'ini güncelle
