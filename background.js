@@ -337,6 +337,10 @@ function fixNotificationLinks(html) {
 
 // Tarayıcı bildirimi göster
 function showNotification(title, message) {
+  // Play notification sound
+  const audio = new Audio(chrome.runtime.getURL('notification.mp3'));
+  audio.play().catch(error => console.log('Error playing sound:', error));
+
   chrome.notifications.create({
     type: "basic",
     iconUrl: "images/icon128.png",
